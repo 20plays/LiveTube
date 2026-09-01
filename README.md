@@ -12,6 +12,7 @@ Paste a link  →  Play  →  Close your phone →  keeps playing
 - **Pagination** — infinite scroll through a channel/playlist feed, or **Load all** to cache every page
 - **Audio-only mode** — plays just the audio stream (no video) to save bandwidth and battery. Default on.
 - **Background playback** — a Media3 foreground service keeps playing with the screen off, with a media notification (play / pause / stop) and lock-screen media controls
+- **Video downloads** — save the currently playing or pasted YouTube video to the device's Downloads folder using Android's system download manager
 - **Auto-play next** — optional toggle to keep playing through a channel/playlist queue
 - **Never AI-dubbed** — when a video has multi-language AI dubbing, only the original language audio track is played
 - **Live streams** — plays YouTube live streams, with periodic refresh so the URL doesn't expire
@@ -26,7 +27,7 @@ Paste a link  →  Play  →  Close your phone →  keeps playing
 
 Download the latest `app-release.apk` from the [Releases page](https://github.com/20plays/LiveTube/releases), allow "Install unknown apps" for your browser/download manager, and open the APK.
 
-On first launch, grant the notification permission so the playback notification shows up.
+On first launch, grant the notification permission so the playback notification shows up. Android 8 and 9 also ask for legacy storage permission the first time you save a video to Downloads.
 
 ## Build from source
 
@@ -53,15 +54,23 @@ The signed release APK is produced at `app/build/outputs/apk/release/app-release
 
 - **Library tab** — tap `+`, paste a channel or playlist URL, it's validated and saved. Tap an item to open its feed; tap a video to play it.
 - **Player tab** — paste any YouTube link (or a direct media URL) and press **Play**. Toggle **Audio only** to strip video, and **Auto-play next** to keep a list playing.
+- **Download** — while a YouTube video is playing, or after pasting its URL, press **Download**. LiveTube resolves the best single-file stream containing both video and audio and hands it to Android's download manager. The file appears in Downloads and Android shows system download progress.
+
+### Download quality
+
+YouTube often serves higher resolutions as separate video-only and audio-only streams. LiveTube intentionally does not merge those tracks yet; downloads use the highest-quality stream that already contains both video and audio. This keeps downloads reliable and avoids bundling a media transcoder.
+
+Live streams cannot be downloaded yet.
 
 ## Privacy
 
 - No accounts, no telemetry, no ads. Everything is stored on-device (Room database).
 - Requires network access to YouTube to fetch feeds and streams.
+- Downloads are handled by Android's built-in download manager.
 
 ## Disclaimer
 
-This app plays YouTube content through unofficial extraction of stream URLs and isn't endorsed by YouTube/Google. Background playback and audio-only streaming of YouTube content may not be permitted by YouTube's Terms of Service and generally require YouTube Premium via the official app — use responsibly, for personal, legal content. The extraction technique can break if YouTube changes its internals.
+This app plays and downloads YouTube content through unofficial extraction of stream URLs and isn't endorsed by YouTube/Google. Background playback, audio-only streaming, and downloading YouTube content may not be permitted by YouTube's Terms of Service and may also be restricted by copyright — only download content you have the right to save. The extraction technique can break if YouTube changes its internals.
 
 ## License
 

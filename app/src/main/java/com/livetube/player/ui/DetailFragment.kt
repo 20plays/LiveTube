@@ -24,7 +24,8 @@ import kotlinx.coroutines.launch
 
 class DetailFragment : Fragment(R.layout.fragment_detail) {
 
-    private lateinit var binding: FragmentDetailBinding
+    private var _binding: FragmentDetailBinding? = null
+    private val binding get() = _binding!!
 
     private val itemId: String by lazy { requireArguments().getString("itemId").orEmpty() }
     private val vm: DetailViewModel
@@ -32,7 +33,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding = FragmentDetailBinding.bind(view)
+        _binding = FragmentDetailBinding.bind(view)
 
         binding.toolbar.setNavigationOnClickListener {
             findNavController().navigateUp()
@@ -134,7 +135,8 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         } else {
             emptyList()
         }
-        val snackbar = Snackbar.make(binding.root, R.string.preparing, Snackbar.LENGTH_LONG)
+        val root = _binding?.root ?: return
+        val snackbar = Snackbar.make(root, R.string.preparing, Snackbar.LENGTH_LONG)
         snackbar.show()
         viewLifecycleOwner.lifecycleScope.launch {
             val result = if (stream.videoUrl.contains("youtube.com") || stream.videoUrl.contains("youtu.be")) {
@@ -148,9 +150,16 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
                     Playback.play(stream.videoUrl, play.url, play.title, play.live, queue)
                 },
                 onFailure = { e ->
-                    Snackbar.make(binding.root, e.message ?: "Failed to play", Snackbar.LENGTH_LONG).show()
+                    _binding?.root?.let { rootView ->
+                        Snackbar.make(rootView, e.message ?: "Failed to play", Snackbar.LENGTH_LONG).show()
+                    }
                 },
             )
         }
+    }
+    override fun onDestroyView() {
+        binding.rv.adapter = null
+        _binding = null
+        super.onDestroyView()
     }
 }

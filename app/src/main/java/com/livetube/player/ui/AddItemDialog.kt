@@ -14,11 +14,12 @@ class AddItemDialog : DialogFragment() {
 
     private val vm: LibraryViewModel by activityViewModels()
 
-    private lateinit var binding: DialogAddBinding
+    private var _binding: DialogAddBinding? = null
+    private val binding get() = _binding!!
     private var alert: androidx.appcompat.app.AlertDialog? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        binding = DialogAddBinding.inflate(layoutInflater)
+        _binding = DialogAddBinding.inflate(layoutInflater)
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.add_library_item)
             .setView(binding.root)
@@ -39,14 +40,20 @@ class AddItemDialog : DialogFragment() {
         val dlg = alert ?: return
         val addButton = dlg.getButton(Dialog.BUTTON_POSITIVE)
         addButton.isEnabled = false
-        vm.addUrl(raw) { error ->
+        vm.addUrl(raw) callback@{ error ->
+            val currentBinding = _binding ?: return@callback
             if (error == null) {
                 dlg.dismiss()
             } else {
-                binding.error.text = error
-                binding.error.isVisible = true
+                currentBinding.error.text = error
+                currentBinding.error.isVisible = true
                 addButton.isEnabled = true
             }
         }
+    }
+    override fun onDestroyView() {
+        alert = null
+        _binding = null
+        super.onDestroyView()
     }
 }

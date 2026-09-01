@@ -20,13 +20,14 @@ import kotlinx.coroutines.launch
 
 class LibraryFragment : Fragment(R.layout.fragment_library) {
 
-    private lateinit var binding: FragmentLibraryBinding
+    private var _binding: FragmentLibraryBinding? = null
+    private val binding get() = _binding!!
 
     private val vm: LibraryViewModel by activityViewModels()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding = FragmentLibraryBinding.bind(view)
+        _binding = FragmentLibraryBinding.bind(view)
 
         binding.toolbar.setOnMenuItemClickListener {
             if (it.itemId == R.id.menu_refresh) {
@@ -68,5 +69,10 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                 }
             }
         }
+    }
+    override fun onDestroyView() {
+        binding.rv.adapter = null
+        _binding = null
+        super.onDestroyView()
     }
 }
