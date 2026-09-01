@@ -1,9 +1,10 @@
 package com.livetube.player.ui.adapters
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.livetube.player.R
@@ -15,29 +16,21 @@ import com.livetube.player.util.formatDuration
 
 class LibraryAdapter(
     private val onClick: (LibraryItemEntity) -> Unit,
-) : RecyclerView.Adapter<LibraryAdapter.VH>() {
-
-    private val items = mutableListOf<LibraryItemEntity>()
-
-    fun submitList(newItems: List<LibraryItemEntity>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
-    }
+) : ListAdapter<LibraryItemEntity, LibraryAdapter.VH>(LibraryDiff) {
 
     class VH(val binding: ItemLibraryBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemLibraryBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false,
+            LayoutInflater.from(parent.context),
+            parent,
+            false,
         )
         return VH(binding)
     }
 
-    override fun getItemCount() = items.size
-
     override fun onBindViewHolder(holder: VH, position: Int) {
-        val item = items[position]
+        val item = getItem(position)
         val b = holder.binding
         b.name.text = item.name
         val isChannel = item.kind == "channel"
@@ -53,33 +46,37 @@ class LibraryAdapter(
         b.root.setOnClickListener { onClick(item) }
         b.thumb.isVisible = item.thumbnail != null
     }
+
+    private object LibraryDiff : DiffUtil.ItemCallback<LibraryItemEntity>() {
+        override fun areItemsTheSame(
+            oldItem: LibraryItemEntity,
+            newItem: LibraryItemEntity,
+        ): Boolean = oldItem.id == newItem.id
+
+        override fun areContentsTheSame(
+            oldItem: LibraryItemEntity,
+            newItem: LibraryItemEntity,
+        ): Boolean = oldItem == newItem
+    }
 }
 
 class StreamAdapter(
     private val onClick: (CachedStreamEntity) -> Unit,
-) : RecyclerView.Adapter<StreamAdapter.VH>() {
-
-    private val items = mutableListOf<CachedStreamEntity>()
-
-    fun submitList(newItems: List<CachedStreamEntity>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
-    }
+) : ListAdapter<CachedStreamEntity, StreamAdapter.VH>(StreamDiff) {
 
     class VH(val binding: ItemStreamBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemStreamBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false,
+            LayoutInflater.from(parent.context),
+            parent,
+            false,
         )
         return VH(binding)
     }
 
-    override fun getItemCount() = items.size
-
     override fun onBindViewHolder(holder: VH, position: Int) {
-        val item = items[position]
+        val item = getItem(position)
         val b = holder.binding
         b.title.text = item.title
         b.sub.text = if (item.isLive) "LIVE" else formatDuration(item.durationSec)
@@ -88,5 +85,18 @@ class StreamAdapter(
             error(R.drawable.ic_video_library)
         }
         b.root.setOnClickListener { onClick(item) }
+    }
+
+    private object StreamDiff : DiffUtil.ItemCallback<CachedStreamEntity>() {
+        override fun areItemsTheSame(
+            oldItem: CachedStreamEntity,
+            newItem: CachedStreamEntity,
+        ): Boolean =
+            oldItem.itemId == newItem.itemId && oldItem.position == newItem.position
+
+        override fun areContentsTheSame(
+            oldItem: CachedStreamEntity,
+            newItem: CachedStreamEntity,
+        ): Boolean = oldItem == newItem
     }
 }
