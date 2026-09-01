@@ -326,13 +326,13 @@ object Yt {
                     )
 
                 val resolvedUrl = best.url
-                val webm = resolvedUrl.contains("video%2Fwebm", ignoreCase = true) ||
-                    resolvedUrl.contains("video/webm", ignoreCase = true)
+                    ?: throw UserMessageException("The selected video stream has no download URL.")
+                val format = best.format
                 DownloadStream(
                     url = resolvedUrl,
                     title = info.name,
-                    mimeType = if (webm) "video/webm" else "video/mp4",
-                    extension = if (webm) "webm" else "mp4",
+                    mimeType = format?.mimeType ?: "video/mp4",
+                    extension = format?.suffix ?: "mp4",
                 )
             } catch (e: UserMessageException) {
                 throw e
