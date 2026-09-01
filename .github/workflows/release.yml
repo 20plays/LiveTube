@@ -87,6 +87,40 @@ jobs:
 
           chmod 600 keystore.properties keystore/livetube.jks
 
+      - name: Verify release signing key
+        shell: bash
+        run: |
+          STORE_PASSWORD="$(sed -n 's/^storePassword=//p' keystore.properties | head -n 1)"
+          KEY_ALIAS="$(sed -n 's/^keyAlias=//p' keystore.properties | head -n 1)"
+
+          if [[ -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" ]]; then
+            echo "::error::keystore.properties is missing storePassword or keyAlias."
+            exit 1
+          fi
+
+          EXPECTED_CERT_SHA256="e886ffeda178fc4e92bcc741f7966c659466c0a6363988c6f1ea027021afc95a"
+          ACTUAL_CERT_SHA256="$(
+            keytool -list -v               -keystore keystore/livetube.jks               -storepass "$STORE_PASSWORD"               -alias "$KEY_ALIAS" 2>/dev/null |
+              sed -nE 's/^[[:space:]]*SHA256:[[:space:]]*//p' |
+              head -n 1 |
+              tr -d ':' |
+              tr '[:upper:]' '[:lower:]'
+          )"
+
+          if [[ -z "$ACTUAL_CERT_SHA256" ]]; then
+            echo "::error::Could not read the signing certificate fingerprint from the keystore."
+            exit 1
+          fi
+
+          if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
+            echo "::error::The signing bundle contains the wrong LiveTube release key."
+            echo "::error::Expected SHA-256: $EXPECTED_CERT_SHA256"
+            echo "::error::Actual SHA-256:   $ACTUAL_CERT_SHA256"
+            exit 1
+          fi
+
+          echo "LiveTube release signing key verified."
+
       - name: Build release APK
         shell: bash
         run: |
@@ -110,21 +144,6 @@ jobs:
           fi
 
           "$APKSIGNER" verify --verbose "$SOURCE_APK"
-
-          EXPECTED_CERT_SHA256="e886ffeda178fc4e92bcc741f7966c659466c0a6363988c6f1ea027021afc95a"
-          ACTUAL_CERT_SHA256="$(
-            "$APKSIGNER" verify --print-certs "$SOURCE_APK" |
-              sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)$/\1/p' |
-              head -n 1 |
-              tr '[:upper:]' '[:lower:]'
-          )"
-
-          if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
-            echo "::error::Release APK was signed with the wrong certificate."
-            echo "::error::Expected SHA-256: $EXPECTED_CERT_SHA256"
-            echo "::error::Actual SHA-256:   $ACTUAL_CERT_SHA256"
-            exit 1
-          fi
 
           RELEASE_APK="LiveTube-${{ steps.version.outputs.tag }}.apk"
           cp "$SOURCE_APK" "$RELEASE_APK"
