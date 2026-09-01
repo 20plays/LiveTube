@@ -56,20 +56,20 @@ The repository includes a **Build and Release APK** GitHub Action that you can s
 
 ### One-time signing setup
 
-Add these repository secrets under **Settings → Secrets and variables → Actions**:
+The release action uses a single repository secret named `ANDROID_SIGNING_BUNDLE_BASE64`. It contains both `keystore.properties` and `keystore/livetube.jks`, so there is only one value to configure.
 
-- `ANDROID_KEYSTORE_BASE64` — the release keystore encoded as one-line Base64
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
-
-On Linux, encode the same keystore you use for local releases with:
+Create the bundle on Linux:
 
 ```bash
-base64 -w 0 keystore/livetube.jks
+mkdir -p /tmp/livetube-signing/keystore
+cp keystore.properties /tmp/livetube-signing/
+cp keystore/livetube.jks /tmp/livetube-signing/keystore/
+tar -C /tmp/livetube-signing -czf - keystore.properties keystore/livetube.jks | base64 -w 0
 ```
 
-Copy that output into the `ANDROID_KEYSTORE_BASE64` secret. Never commit the keystore or any of these values to the repository.
+Add the resulting one-line value under **Settings → Secrets and variables → Actions** as `ANDROID_SIGNING_BUNDLE_BASE64`.
+
+The workflow also verifies the release APK against LiveTube's expected signing-certificate SHA-256 fingerprint before publishing. Never commit the keystore, signing bundle, or passwords to the repository.
 
 ### Publishing a release
 
