@@ -79,6 +79,13 @@ object Yt {
 
     data class StreamPlay(val url: String, val live: Boolean, val title: String)
 
+    data class DownloadStream(
+        val url: String,
+        val title: String,
+        val mimeType: String,
+        val extension: String,
+    )
+
     val service: StreamingService get() = ServiceList.YouTube
 
     fun identify(raw: String): String {
@@ -104,8 +111,6 @@ object Yt {
         } catch (e: java.io.IOException) {
             throw UserMessageException("Couldn't reach YouTube. Check your connection.")
         } catch (e: RuntimeException) {
-            // Guard against YouTube layout changes that make the parser throw (e.g. NPE while
-            // reading the channel header). Log for diagnosis, show a clean message.
             android.util.Log.e("LT", "resolveNew failed", e)
             throw UserMessageException("Couldn't add that link. Try again in a moment.")
         }
@@ -114,8 +119,6 @@ object Yt {
     private fun resolveChannel(raw: String): NewItem {
         val ce = service.getChannelExtractor(raw)
         ce.fetchPage()
-        // YouTube's channel header layout is A/B tested, so header parsing can throw for some
-        // accounts/regions. Keep the add resilient: degrade missing fields, never crash on them.
         val id = headerSafe { ce.id } ?: raw
         val name = headerSafe { ce.name } ?: fallbackName(raw)
         val thumbnail = headerSafe { firstImageUrl(ce.avatars) }
@@ -127,14 +130,11 @@ object Yt {
                 ?: throw ParsingException("No video tab found for this channel.")
             tabUrl = absoluteUrl(videosTab.url)
             val extractor = service.getChannelTabExtractor(videosTab)
-            // Preloaded ("ready") tabs already carry their page data; plain tabs need a fetch.
             if (videosTab !is ReadyChannelTabListLinkHandler) {
                 extractor.fetchPage()
             }
             extractor
         } catch (e: Exception) {
-            // Tabs/header couldn't be parsed (newer channel layout): fall back to the videos
-            // tab URL directly, which only parses the tab content and skips the header.
             tabUrl = tabUrlFor(raw)
             val extractor =
                 service.getChannelTabExtractor(service.getChannelTabLHFactory().fromUrl(tabUrl))
@@ -273,8 +273,6 @@ object Yt {
                     return@withContext StreamPlay(liveUrl, true, info.name)
                 }
                 if (audioOnly) {
-                    // Always play the original language audio — never an AI dub or secondary
-                    // track. Track type is null for videos without explicit audio tracks.
                     val original = info.audioStreams.filter {
                         it.audioTrackType == null || it.audioTrackType == AudioTrackType.ORIGINAL
                     }
@@ -305,6 +303,46 @@ object Yt {
                 throw UserMessageException(e.message ?: "Couldn't prepare playback.")
             } catch (e: java.io.IOException) {
                 throw UserMessageException("Couldn't reach YouTube. Check your connection.")
+            } catch (e: RuntimeException) {
+                android.util.Log.e("LT", "resolveStream failed", e)
+                throw UserMessageException("Couldn't prepare playback. YouTube may have changed.")
+            }
+        }
+
+    suspend fun resolveDownload(videoUrl: String): DownloadStream =
+        withContext(Dispatchers.IO) {
+            try {
+                val info = StreamInfo.getInfo(service.getStreamExtractor(videoUrl))
+                if (isLiveType(info.streamType)) {
+                    throw UserMessageException("Live streams can't be downloaded yet.")
+                }
+
+                val best = info.videoStreams
+                    .asSequence()
+                    .filter { !it.isVideoOnly && !it.url.isNullOrBlank() }
+                    .maxByOrNull { parseResolution(it.resolution) }
+                    ?: throw UserMessageException(
+                        "No single-file video stream is available for this video.",
+                    )
+
+                val resolvedUrl = best.url
+                val webm = resolvedUrl.contains("video%2Fwebm", ignoreCase = true) ||
+                    resolvedUrl.contains("video/webm", ignoreCase = true)
+                DownloadStream(
+                    url = resolvedUrl,
+                    title = info.name,
+                    mimeType = if (webm) "video/webm" else "video/mp4",
+                    extension = if (webm) "webm" else "mp4",
+                )
+            } catch (e: UserMessageException) {
+                throw e
+            } catch (e: ExtractionException) {
+                throw UserMessageException(e.message ?: "Couldn't prepare the download.")
+            } catch (e: java.io.IOException) {
+                throw UserMessageException("Couldn't reach YouTube. Check your connection.")
+            } catch (e: RuntimeException) {
+                android.util.Log.e("LT", "resolveDownload failed", e)
+                throw UserMessageException("Couldn't prepare the download. YouTube may have changed.")
             }
         }
 
