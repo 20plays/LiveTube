@@ -50,6 +50,36 @@ The signed release APK is produced at `app/build/outputs/apk/release/app-release
 >
 > Keep that keystore backed up — upgrading an installed app requires signing with the same key.
 
+## Manual GitHub releases
+
+The repository includes a **Build and Release APK** GitHub Action that you can start manually from the Actions tab. It builds the signed release APK, verifies its signature, creates a Git tag from `versionName`, publishes a GitHub Release with generated release notes, and attaches both the APK and a SHA-256 checksum.
+
+### One-time signing setup
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `ANDROID_KEYSTORE_BASE64` — the release keystore encoded as one-line Base64
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+On Linux, encode the same keystore you use for local releases with:
+
+```bash
+base64 -w 0 keystore/livetube.jks
+```
+
+Copy that output into the `ANDROID_KEYSTORE_BASE64` secret. Never commit the keystore or any of these values to the repository.
+
+### Publishing a release
+
+1. Bump `versionName` and `versionCode` in `app/build.gradle.kts`.
+2. Merge that change into `main`.
+3. Open **Actions → Build and Release APK → Run workflow**.
+4. Select `main`, optionally mark it as a pre-release, and run it.
+
+For `versionName = "1.1"`, the workflow creates tag `v1.1` and uploads `LiveTube-v1.1.apk`. It refuses to overwrite an existing tag, so every release needs a new version.
+
 ## Usage
 
 - **Library tab** — tap `+`, paste a channel or playlist URL, it's validated and saved. Tap an item to open its feed; tap a video to play it.
