@@ -38,7 +38,7 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             val url = pendingDownloadUrl
             pendingDownloadUrl = null
-            if (granted && url != null) {
+            if (granted && url != null && _binding != null) {
                 startDownload(url)
             } else if (!granted) {
                 setStatus(getString(R.string.download_permission_required))
@@ -130,9 +130,10 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
     }
 
     private fun downloadVideo() {
-        val raw = Playback.watchUrl.value
-            ?.takeIf { it.isNotBlank() }
-            ?: binding.urlInput.text?.toString()?.trim().orEmpty()
+        val pasted = binding.urlInput.text?.toString()?.trim().orEmpty()
+        val raw = pasted.takeIf { binding.urlInput.hasFocus() && it.isNotBlank() }
+            ?: Playback.watchUrl.value?.takeIf { it.isNotBlank() }
+            ?: pasted
 
         if (raw.isBlank()) {
             setStatus(getString(R.string.download_no_video))
